@@ -1,0 +1,39 @@
+name: Export Airtable to JSON
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 5 * * *"   # dagelijks 05:00 UTC (pas gerust aan)
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run export script
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          AIRTABLE_TABLE: ${{ secrets.AIRTABLE_TABLE }}
+          AIRTABLE_VIEW: ${{ secrets.AIRTABLE_VIEW }}
+          OUT_FILE: data/DEF-JobAt.json
+        run: node scripts/export-airtable-to-json.mjs
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/DEF-JobAt.json
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Update DEF-JobAt.json from Airtable"
+          git push
